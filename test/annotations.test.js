@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(require.resolve("../typora-annotations.js"), "utf8");
+const styles = fs.readFileSync(require.resolve("../typora-annotations.css"), "utf8");
 const sandbox = {
   window: { __typoraAnnotationsLoaded: false },
   module: { exports: {} },
@@ -73,5 +74,8 @@ assert.deepEqual(
   ], 10, 20) },
   { left: 187, top: 53 },
 );
+
+assert.match(styles, /#typora-annotation-list\s*\{[^}]*\bgap:\s*8px;/s);
+assert.match(styles, /\.ta-card\s*\{[^}]*\bmargin:\s*0;/s);
 
 console.log("annotation anchor tests passed");

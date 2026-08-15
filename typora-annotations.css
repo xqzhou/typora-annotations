@@ -169,7 +169,15 @@ body.ta-resizing #typora-annotation-resize-handle::after {
   background: rgba(128, 128, 128, 0.1) !important;
 }
 .ta-header-actions [data-action="agent"]:disabled { cursor: default; opacity: 0.42; }
-#typora-annotation-list { flex: 1; min-height: 0; overflow: auto; padding: 12px; }
+#typora-annotation-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
 #typora-annotation-storage-status {
   flex: none;
   overflow: hidden;
@@ -183,7 +191,7 @@ body.ta-resizing #typora-annotation-resize-handle::after {
 .ta-empty { padding: 40px 16px; text-align: center; opacity: 0.55; }
 
 .ta-card {
-  margin: 0 0 8px;
+  margin: 0;
   padding: 9px;
   border: 1px solid var(--ta-border);
   border-left: 4px solid #f1c40f;
