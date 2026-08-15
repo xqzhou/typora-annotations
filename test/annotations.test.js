@@ -77,5 +77,8 @@ assert.deepEqual(
 
 assert.match(styles, /#typora-annotation-list\s*\{[^}]*\bgap:\s*8px;/s);
 assert.match(styles, /\.ta-card\s*\{[^}]*\bmargin:\s*0;/s);
+assert.match(source, /comment\.className = "ta-comment-input"/);
+assert.equal((styles.match(/\.ta-card-comment\s*\{/g) || []).length, 1);
+assert.match(styles, /\.ta-comment-input\s*\{[^}]*\bresize:\s*vertical;/s);
 
 console.log("annotation anchor tests passed");

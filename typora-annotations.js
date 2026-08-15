@@ -754,7 +754,7 @@
 
       if (item.type === "comment") {
         const comment = document.createElement("textarea");
-        comment.className = "ta-card-comment";
+        comment.className = "ta-comment-input";
         comment.value = item.comment || "";
         comment.placeholder = "输入评论";
         comment.addEventListener("change", () => updateComment(item.id, comment.value));

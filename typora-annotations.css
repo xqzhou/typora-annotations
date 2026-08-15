@@ -218,7 +218,7 @@ body.ta-resizing #typora-annotation-resize-handle::after {
   -webkit-line-clamp: 3;
 }
 
-.ta-card-comment {
+.ta-comment-input {
   width: 100%;
   min-height: 48px;
   box-sizing: border-box;
@@ -234,7 +234,7 @@ body.ta-resizing #typora-annotation-resize-handle::after {
 }
 
 .ta-card-quote,
-.ta-card-comment { font-size: calc(1em - 1px) !important; }
+.ta-comment-input { font-size: calc(1em - 1px) !important; }
 
 .ta-card-actions { display: flex; justify-content: flex-end; align-items: center; margin-top: 4px; font-size: 11px; line-height: 1.2; opacity: 0.62; }
 .ta-card.unresolved .ta-card-actions { justify-content: space-between; }
