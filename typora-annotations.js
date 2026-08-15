@@ -761,6 +761,48 @@
     setTimeout(() => selection.removeAllRanges(), FOCUS_DURATION);
   }
 
+  function resolvedOrderNode(resolved) {
+    if (!resolved) return null;
+    if (resolved.kind === "dom") return resolved.range.startContainer;
+    if (resolved.kind === "code") return resolved.cm.getWrapperElement?.() || null;
+    return null;
+  }
+
+  function compareResolvedOrder(a, b) {
+    const nodeA = resolvedOrderNode(a);
+    const nodeB = resolvedOrderNode(b);
+    if (!nodeA || !nodeB) return 0;
+    if (nodeA === nodeB) {
+      if (a.kind === "dom" && b.kind === "dom") {
+        return a.range.startOffset - b.range.startOffset;
+      }
+      if (a.kind === "code" && b.kind === "code") {
+        return a.from.line - b.from.line || a.from.ch - b.from.ch;
+      }
+      return 0;
+    }
+    const relation = nodeA.compareDocumentPosition(nodeB);
+    if (relation & 4) return -1; // DOCUMENT_POSITION_FOLLOWING
+    if (relation & 2) return 1; // DOCUMENT_POSITION_PRECEDING
+    return 0;
+  }
+
+  function orderedItemsForSidebar(items, resolvedMap) {
+    return items.map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const resolvedA = resolvedMap.get(a.item.id);
+        const resolvedB = resolvedMap.get(b.item.id);
+        if (resolvedA && !resolvedB) return -1;
+        if (!resolvedA && resolvedB) return 1;
+        if (resolvedA && resolvedB) {
+          const order = compareResolvedOrder(resolvedA, resolvedB);
+          if (order) return order;
+        }
+        return a.index - b.index;
+      })
+      .map(({ item }) => item);
+  }
+
   function renderSidebar() {
     const list = document.querySelector("#typora-annotation-list");
     const count = document.querySelector("#typora-annotation-count");
@@ -781,7 +823,7 @@
       return;
     }
 
-    for (const item of [...state.items].reverse()) {
+    for (const item of orderedItemsForSidebar(state.items, state.resolved)) {
       const isResolved = state.resolved.has(item.id);
       const card = document.createElement("article");
       card.className = "ta-card ta-card-" + item.type +
@@ -975,6 +1017,7 @@
       textPointForOffset,
       commentMarkerPosition,
       centeredScrollTop,
+      orderedItemsForSidebar,
     };
   }
 })();

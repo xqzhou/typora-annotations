@@ -21,6 +21,7 @@ const {
   textPointForOffset,
   commentMarkerPosition,
   centeredScrollTop,
+  orderedItemsForSidebar,
 } = sandbox.module.exports;
 
 assert.equal(commonPrefixLength("abcd", "abxy"), 2);
@@ -87,6 +88,53 @@ assert.equal(
 assert.equal(
   centeredScrollTop(1500, 600, 2000, 28, { top: 900, bottom: 920 }),
   1400,
+);
+
+const positionNode = (order) => ({
+  compareDocumentPosition(other) {
+    return order < other.order ? 4 : 2;
+  },
+  order,
+});
+const earlyNode = positionNode(1);
+const lateNode = positionNode(2);
+const orderedItems = orderedItemsForSidebar([
+  { id: "late" },
+  { id: "stale-first" },
+  { id: "early" },
+  { id: "stale-second" },
+], new Map([
+  ["late", { kind: "dom", range: { startContainer: lateNode, startOffset: 0 } }],
+  ["early", { kind: "dom", range: { startContainer: earlyNode, startOffset: 0 } }],
+]));
+assert.deepEqual(
+  Array.from(orderedItems, (item) => item.id),
+  ["early", "late", "stale-first", "stale-second"],
+);
+
+const sharedNode = positionNode(3);
+assert.deepEqual(
+  Array.from(orderedItemsForSidebar([
+    { id: "second" },
+    { id: "first" },
+  ], new Map([
+    ["second", { kind: "dom", range: { startContainer: sharedNode, startOffset: 20 } }],
+    ["first", { kind: "dom", range: { startContainer: sharedNode, startOffset: 5 } }],
+  ])), (item) => item.id),
+  ["first", "second"],
+);
+
+const sharedCodeNode = positionNode(4);
+const sharedCodeMirror = { getWrapperElement: () => sharedCodeNode };
+assert.deepEqual(
+  Array.from(orderedItemsForSidebar([
+    { id: "line-ten" },
+    { id: "line-two" },
+  ], new Map([
+    ["line-ten", { kind: "code", cm: sharedCodeMirror, from: { line: 10, ch: 0 } }],
+    ["line-two", { kind: "code", cm: sharedCodeMirror, from: { line: 2, ch: 4 } }],
+  ])), (item) => item.id),
+  ["line-two", "line-ten"],
 );
 
 assert.match(styles, /#typora-annotation-list\s*\{[^}]*\bgap:\s*8px;/s);
