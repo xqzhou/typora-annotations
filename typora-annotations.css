@@ -7,6 +7,11 @@
   text-decoration: underline wavy rgba(205, 103, 0, 0.8) 1px;
 }
 
+::highlight(typora-active-annotation) {
+  background-color: rgba(255, 139, 0, 0.72);
+  text-decoration: underline solid rgba(190, 82, 0, 0.95) 2px;
+}
+
 #typora-annotations-root {
   --ta-bg: color-mix(in srgb, var(--bg-color, #fff) 94%, #888 6%);
   --ta-fg: var(--text-color, #252525);
@@ -202,7 +207,10 @@ body.ta-resizing #typora-annotation-resize-handle::after {
 }
 
 .ta-card-comment { border-left-color: #db7800; }
-.ta-card.selected { box-shadow: 0 0 0 3px rgba(219, 120, 0, 0.3); }
+.ta-card.selected {
+  box-shadow: 0 0 0 3px rgba(219, 120, 0, 0.72), 0 5px 18px rgba(219, 120, 0, 0.22);
+  animation: ta-card-focus 1.8s ease-out;
+}
 .ta-card.unresolved { opacity: 0.58; }
 
 .ta-card-quote {
@@ -253,6 +261,7 @@ body.ta-resizing #typora-annotation-resize-handle::after {
   font-size: 10px !important;
   line-height: 1 !important;
 }
+.ta-comment-marker.selected { animation: ta-marker-focus 600ms ease-in-out 3; }
 
 #typora-annotation-fallback,
 #typora-annotation-markers { position: absolute; inset: 0; z-index: 2147483640; pointer-events: none; }
@@ -261,6 +270,29 @@ body.ta-resizing #typora-annotation-resize-handle::after {
 .ta-fallback-highlight { background: rgba(255, 220, 65, 0.58); }
 .ta-fallback-comment { background: rgba(255, 177, 74, 0.42); border-bottom: 1px wavy #cd6700; }
 .ta-code-overlay { border-radius: 2px; mix-blend-mode: multiply; }
+.ta-fallback-active {
+  z-index: 1;
+  border-radius: 2px;
+  outline: 2px solid rgba(219, 92, 0, 0.9);
+  background: rgba(255, 139, 0, 0.3);
+  animation: ta-source-focus 600ms ease-in-out 3;
+}
+
+@keyframes ta-card-focus {
+  0%, 100% { transform: translateX(0); }
+  18% { transform: translateX(-4px); }
+  36% { transform: translateX(2px); }
+}
+
+@keyframes ta-marker-focus {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(219, 120, 0, 0)); }
+  50% { transform: scale(1.8); filter: drop-shadow(0 0 4px rgba(219, 120, 0, 0.9)); }
+}
+
+@keyframes ta-source-focus {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
 
 #typora-annotation-composer {
   position: fixed;
@@ -325,4 +357,5 @@ body.ta-resizing #typora-annotation-resize-handle::after {
 
 @media (prefers-reduced-motion: reduce) {
   #typora-annotation-sidebar, #typora-annotation-toast, content, #top-titlebar, footer.ty-footer { transition: none; }
+  .ta-card.selected, .ta-comment-marker.selected, .ta-fallback-active { animation: none; }
 }

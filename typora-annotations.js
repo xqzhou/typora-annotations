@@ -8,7 +8,9 @@
   const ROOT_ID = "typora-annotations-root";
   const HIGHLIGHT_NAME = "typora-user-highlight";
   const COMMENT_NAME = "typora-user-comment";
+  const ACTIVE_NAME = "typora-active-annotation";
   const CONTEXT_LENGTH = 48;
+  const FOCUS_DURATION = 1800;
   const HELPER_URL = "http://127.0.0.1:17373/v1/document";
   const SIDEBAR_WIDTH_KEY = "typora-annotations:sidebar-width";
 
@@ -26,6 +28,8 @@
     saveTimer: 0,
     sidebarWidth: 340,
     activeCodeMirror: null,
+    focusedId: null,
+    focusTimer: 0,
   };
 
   function uuid() {
@@ -330,6 +334,7 @@
     if (window.CSS && CSS.highlights) {
       CSS.highlights.delete(HIGHLIGHT_NAME);
       CSS.highlights.delete(COMMENT_NAME);
+      CSS.highlights.delete(ACTIVE_NAME);
     }
   }
 
@@ -347,6 +352,7 @@
     state.resolved.clear();
     const highlights = [];
     const comments = [];
+    const activeRanges = [];
     const codeMirrors = Array.from(map.root.querySelectorAll(".CodeMirror"))
       .map((wrapper) => wrapper.CodeMirror)
       .filter((cm) => cm && typeof cm.getValue === "function");
@@ -364,7 +370,7 @@
           to: cm.posFromIndex(match.end),
         };
         state.resolved.set(item.id, resolved);
-        renderCodeOverlay(resolved, item.type);
+        renderCodeOverlay(resolved, item.type, item.id === state.focusedId);
         if (item.type === "comment") addCommentMarker(item, resolved);
         continue;
       }
@@ -375,16 +381,19 @@
       const resolved = { kind: "dom", range };
       state.resolved.set(item.id, resolved);
       (item.type === "comment" ? comments : highlights).push(range);
+      if (item.id === state.focusedId) activeRanges.push(range);
       if (item.type === "comment") addCommentMarker(item, resolved);
     }
 
     if (window.CSS && CSS.highlights && window.Highlight) {
       if (highlights.length) CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(...highlights));
       if (comments.length) CSS.highlights.set(COMMENT_NAME, new Highlight(...comments));
+      if (activeRanges.length) CSS.highlights.set(ACTIVE_NAME, new Highlight(...activeRanges));
     } else {
       renderFallbackRanges(highlights, "highlight");
       renderFallbackRanges(comments, "comment");
     }
+    renderFallbackRanges(activeRanges, "active");
     renderSidebar();
   }
 
@@ -409,12 +418,13 @@
     return rects;
   }
 
-  function renderCodeOverlay(resolved, type) {
+  function renderCodeOverlay(resolved, type, active) {
     const layer = document.querySelector("#typora-annotation-fallback");
     if (!layer) return;
     for (const rect of codeSelectionRects(resolved)) {
       const mark = document.createElement("span");
-      mark.className = "ta-fallback ta-code-overlay ta-fallback-" + type;
+      mark.className = "ta-fallback ta-code-overlay ta-fallback-" + type +
+        (active ? " ta-fallback-active" : "");
       mark.style.left = rect.left + window.scrollX + "px";
       mark.style.top = rect.top + window.scrollY + "px";
       mark.style.width = Math.max(1, rect.right - rect.left) + "px";
@@ -467,14 +477,15 @@
     const marker = document.createElement("button");
     marker.type = "button";
     marker.className = "ta-comment-marker";
+    if (item.id === state.focusedId) marker.classList.add("selected");
     marker.textContent = "●";
     marker.title = item.comment || "评论";
     marker.setAttribute("aria-label", "查看评论：" + (item.comment || item.anchor.quote));
     marker.style.left = position.left + "px";
     marker.style.top = position.top + "px";
     marker.addEventListener("click", () => {
-      openSidebar(item.id);
       focusAnnotation(item.id);
+      openSidebar(item.id);
     });
     layer.appendChild(marker);
   }
@@ -584,9 +595,7 @@
     if (selectedId) {
       requestAnimationFrame(() => {
         const card = sidebar.querySelector(`[data-id="${CSS.escape(selectedId)}"]`);
-        card?.scrollIntoView({ block: "nearest" });
-        card?.classList.add("selected");
-        setTimeout(() => card?.classList.remove("selected"), 1000);
+        card?.scrollIntoView({ block: "center", behavior: "smooth" });
       });
     }
   }
@@ -686,14 +695,26 @@
     toast("已复制给 Agent 的提示词");
   }
 
+  function activateAnnotation(id) {
+    state.focusedId = id;
+    window.clearTimeout(state.focusTimer);
+    render();
+    state.focusTimer = window.setTimeout(() => {
+      if (state.focusedId !== id) return;
+      state.focusedId = null;
+      render();
+    }, FOCUS_DURATION);
+  }
+
   function focusAnnotation(id) {
     const resolved = state.resolved.get(id);
     if (!resolved) return toast("这条批注暂时无法定位");
+    activateAnnotation(id);
     if (resolved.kind === "code") {
       resolved.cm.scrollIntoView({ from: resolved.from, to: resolved.to }, 100);
       resolved.cm.focus();
       resolved.cm.setSelection(resolved.from, resolved.to);
-      window.setTimeout(() => resolved.cm.setCursor(resolved.to), 900);
+      window.setTimeout(() => resolved.cm.setCursor(resolved.to), FOCUS_DURATION);
       return;
     }
     const range = resolved.range;
@@ -709,7 +730,7 @@
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range.cloneRange());
-    setTimeout(() => selection.removeAllRanges(), 900);
+    setTimeout(() => selection.removeAllRanges(), FOCUS_DURATION);
   }
 
   function renderSidebar() {
@@ -735,7 +756,9 @@
     for (const item of [...state.items].reverse()) {
       const isResolved = state.resolved.has(item.id);
       const card = document.createElement("article");
-      card.className = "ta-card ta-card-" + item.type + (isResolved ? "" : " unresolved");
+      card.className = "ta-card ta-card-" + item.type +
+        (isResolved ? "" : " unresolved") +
+        (item.id === state.focusedId ? " selected" : "");
       card.dataset.id = item.id;
       card.addEventListener("click", (event) => {
         if (event.target.closest("button, textarea, .ta-card-actions")) return;

@@ -80,5 +80,9 @@ assert.match(styles, /\.ta-card\s*\{[^}]*\bmargin:\s*0;/s);
 assert.match(source, /comment\.className = "ta-comment-input"/);
 assert.equal((styles.match(/\.ta-card-comment\s*\{/g) || []).length, 1);
 assert.match(styles, /\.ta-comment-input\s*\{[^}]*\bresize:\s*vertical;/s);
+assert.match(source, /const FOCUS_DURATION = 1800;/);
+assert.match(source, /item\.id === state\.focusedId \? " selected" : ""/);
+assert.match(styles, /\.ta-comment-marker\.selected\s*\{[^}]*ta-marker-focus/s);
+assert.match(styles, /\.ta-fallback-active\s*\{[^}]*ta-source-focus/s);
 
 console.log("annotation anchor tests passed");
