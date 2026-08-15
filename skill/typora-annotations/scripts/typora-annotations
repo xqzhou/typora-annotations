@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+HELPER="$HOME/Library/Application Support/Typora Annotations/typora_annotations.py"
+if [[ ! -f "$HELPER" ]]; then
+  echo "Typora annotations helper is not installed: $HELPER" >&2
+  exit 1
+fi
+exec /usr/bin/python3 "$HELPER" "$@"

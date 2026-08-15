@@ -1,0 +1,77 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const source = fs.readFileSync(require.resolve("../typora-annotations.js"), "utf8");
+const sandbox = {
+  window: { __typoraAnnotationsLoaded: false },
+  module: { exports: {} },
+  document: { readyState: "loading", addEventListener() {} },
+  setTimeout() {},
+  console,
+};
+vm.runInNewContext(source, sandbox);
+
+const {
+  findAnchor,
+  findCodeAnchor,
+  commonPrefixLength,
+  commonSuffixLength,
+  textPointForOffset,
+  commentMarkerPosition,
+} = sandbox.module.exports;
+
+assert.equal(commonPrefixLength("abcd", "abxy"), 2);
+assert.equal(commonSuffixLength("xxcde", "yycde"), 3);
+
+assert.deepEqual(
+  { ...findAnchor("first target then target last", { quote: "target", prefix: " then ", suffix: " last" }) },
+  { start: 18, end: 24, score: 11 },
+);
+
+assert.equal(findAnchor("text changed", { quote: "missing", prefix: "", suffix: "" }), null);
+assert.equal(findAnchor("abc", { quote: "", prefix: "", suffix: "" }), null);
+
+assert.deepEqual(
+  { ...findCodeAnchor([
+    "func first() { return target }",
+    "func chosen() { return target }",
+  ], {
+    scope: "code",
+    quote: "target",
+    prefix: "return ",
+    suffix: " }",
+    blockPrefix: "func chosen()",
+    blockSuffix: "target }",
+  }) },
+  { blockIndex: 1, start: 23, end: 29, score: 30 },
+);
+
+assert.equal(findCodeAnchor(["target"], { quote: "target", scope: "text" }), null);
+
+const headingNode = { name: "heading" };
+const paragraphNode = { name: "paragraph" };
+const adjacentSegments = [
+  { node: headingNode, start: 0, end: 7 },
+  { node: paragraphNode, start: 7, end: 20 },
+];
+
+assert.deepEqual(
+  { ...textPointForOffset(adjacentSegments, 7, "start") },
+  { node: paragraphNode, offset: 0 },
+);
+assert.deepEqual(
+  { ...textPointForOffset(adjacentSegments, 7, "end") },
+  { node: headingNode, offset: 7 },
+);
+
+assert.deepEqual(
+  { ...commentMarkerPosition([
+    { right: 100, top: 40, bottom: 60 },
+    { right: 180, top: 42, bottom: 58 },
+    { right: 80, top: 70, bottom: 90 },
+  ], 10, 20) },
+  { left: 187, top: 53 },
+);
+
+console.log("annotation anchor tests passed");

@@ -1,0 +1,320 @@
+::highlight(typora-user-highlight) {
+  background-color: rgba(255, 220, 65, 0.58);
+}
+
+::highlight(typora-user-comment) {
+  background-color: rgba(255, 177, 74, 0.42);
+  text-decoration: underline wavy rgba(205, 103, 0, 0.8) 1px;
+}
+
+#typora-annotations-root {
+  --ta-bg: color-mix(in srgb, var(--bg-color, #fff) 94%, #888 6%);
+  --ta-fg: var(--text-color, #252525);
+  --ta-border: color-mix(in srgb, var(--ta-fg) 16%, transparent);
+  color: var(--ta-fg);
+  font-family: var(--ta-font-family, inherit);
+  font-size: calc(var(--ta-font-size, 1rem) - 2px);
+  line-height: var(--ta-line-height, 1.45);
+}
+
+content,
+#top-titlebar,
+footer.ty-footer {
+  transition: right 160ms ease, left 160ms ease;
+}
+
+body.ta-sidebar-open content,
+body.ta-sidebar-open #top-titlebar,
+body.ta-sidebar-open footer.ty-footer {
+  right: var(--ta-sidebar-width, 340px) !important;
+}
+
+body.ta-resizing,
+body.ta-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+#typora-annotation-toolbar {
+  position: fixed;
+  z-index: 2147483645;
+  display: flex;
+  overflow: hidden;
+  padding: 3px;
+  border: 1px solid var(--ta-border);
+  border-radius: 8px;
+  background: var(--ta-bg);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2);
+}
+
+#typora-annotation-toolbar[hidden],
+#typora-annotation-composer[hidden] { display: none !important; }
+
+#typora-annotation-toolbar button,
+#typora-annotations-root button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+#typora-annotation-toolbar button {
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+#typora-annotation-toolbar button:hover,
+#typora-annotation-toolbar button:focus-visible,
+.ta-card-actions button:hover { background: rgba(128, 128, 128, 0.16); }
+
+#typora-annotation-toggle {
+  position: fixed;
+  z-index: 2147483642;
+  top: 56px;
+  right: 12px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+  padding: 7px 10px !important;
+  border: 1px solid var(--ta-border) !important;
+  border-radius: 999px !important;
+  background: var(--ta-bg) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  opacity: 0.78;
+}
+
+#typora-annotation-toggle:hover { opacity: 1; }
+body.ta-sidebar-open #typora-annotation-toggle { display: none; }
+
+.ta-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0 3px;
+  border-radius: 99px;
+  color: #fff;
+  background: #d76b00;
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+#typora-annotation-sidebar {
+  position: fixed;
+  z-index: 2147483643;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--ta-sidebar-width, 340px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--ta-border);
+  background: var(--ta-bg);
+  box-shadow: none;
+  transform: translateX(105%);
+  transition: transform 160ms ease;
+}
+
+#typora-annotation-sidebar.open { transform: translateX(0); }
+
+#typora-annotation-resize-handle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  cursor: col-resize;
+}
+
+#typora-annotation-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: var(--ta-border);
+}
+
+#typora-annotation-resize-handle:hover::after,
+body.ta-resizing #typora-annotation-resize-handle::after {
+  width: 3px;
+  background: #d76b00;
+}
+
+#typora-annotation-sidebar header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ta-border);
+}
+
+#typora-annotation-sidebar .ta-close { font-size: 23px; opacity: 0.65; }
+.ta-header-actions { display: flex; align-items: center; gap: 6px; }
+.ta-header-actions [data-action="agent"] {
+  padding: 4px 8px !important;
+  border-radius: 5px !important;
+  background: rgba(128, 128, 128, 0.1) !important;
+}
+.ta-header-actions [data-action="agent"]:disabled { cursor: default; opacity: 0.42; }
+#typora-annotation-list { flex: 1; min-height: 0; overflow: auto; padding: 12px; }
+#typora-annotation-storage-status {
+  flex: none;
+  overflow: hidden;
+  padding: 8px 12px;
+  border-top: 1px solid var(--ta-border);
+  opacity: 0.58;
+  font-size: 0.78em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ta-empty { padding: 40px 16px; text-align: center; opacity: 0.55; }
+
+.ta-card {
+  margin: 0 0 8px;
+  padding: 9px;
+  border: 1px solid var(--ta-border);
+  border-left: 4px solid #f1c40f;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ta-bg) 96%, var(--ta-fg) 4%);
+  line-height: 1.35;
+  transition: box-shadow 160ms ease;
+}
+
+.ta-card-comment { border-left-color: #db7800; }
+.ta-card.selected { box-shadow: 0 0 0 3px rgba(219, 120, 0, 0.3); }
+.ta-card.unresolved { opacity: 0.58; }
+
+.ta-card-quote {
+  display: -webkit-box;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  text-align: left;
+  font-weight: 600 !important;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.ta-card-comment {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  margin: 5px 0 0;
+  padding: 6px 7px;
+  resize: vertical;
+  border: 1px solid var(--ta-border);
+  border-radius: 6px;
+  color: inherit;
+  background: rgba(128, 128, 128, 0.06);
+  font: inherit;
+  line-height: 1.35;
+}
+
+.ta-card-quote,
+.ta-card-comment { font-size: calc(1em - 1px) !important; }
+
+.ta-card-actions { display: flex; justify-content: flex-end; align-items: center; margin-top: 4px; font-size: 11px; line-height: 1.2; opacity: 0.62; }
+.ta-card.unresolved .ta-card-actions { justify-content: space-between; }
+.ta-card-actions button { margin: 0 !important; padding: 2px 4px !important; border-radius: 4px !important; }
+
+.ta-comment-marker {
+  position: absolute;
+  z-index: 2147483641;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0 !important;
+  color: #db7800 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+
+#typora-annotation-fallback,
+#typora-annotation-markers { position: absolute; inset: 0; z-index: 2147483640; pointer-events: none; }
+#typora-annotation-markers button { pointer-events: auto; }
+.ta-fallback { position: absolute; pointer-events: none; }
+.ta-fallback-highlight { background: rgba(255, 220, 65, 0.58); }
+.ta-fallback-comment { background: rgba(255, 177, 74, 0.42); border-bottom: 1px wavy #cd6700; }
+.ta-code-overlay { border-radius: 2px; mix-blend-mode: multiply; }
+
+#typora-annotation-composer {
+  position: fixed;
+  z-index: 2147483646;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.ta-composer-card {
+  width: min(430px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 18px;
+  border: 1px solid var(--ta-border);
+  border-radius: 12px;
+  background: var(--ta-bg);
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.28);
+}
+
+.ta-composer-quote {
+  max-height: 76px;
+  margin: 10px 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-left: 3px solid #db7800;
+  background: rgba(128, 128, 128, 0.08);
+  opacity: 0.8;
+}
+
+.ta-composer-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px;
+  border: 1px solid var(--ta-border);
+  border-radius: 7px;
+  color: inherit;
+  background: rgba(128, 128, 128, 0.06);
+  font: inherit;
+}
+
+.ta-composer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ta-composer-actions button { padding: 6px 12px !important; border-radius: 6px !important; background: rgba(128, 128, 128, 0.12) !important; }
+.ta-composer-actions [data-action="save"] { color: #fff !important; background: #d76b00 !important; }
+
+#typora-annotation-toast {
+  position: fixed;
+  z-index: 2147483647;
+  left: 50%;
+  bottom: 30px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(20, 20, 20, 0.88);
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: 140ms ease;
+  pointer-events: none;
+}
+
+#typora-annotation-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  #typora-annotation-sidebar, #typora-annotation-toast, content, #top-titlebar, footer.ty-footer { transition: none; }
+}
