@@ -241,7 +241,7 @@ body.ta-resizing #typora-annotation-resize-handle::after {
   line-height: 1.35;
 }
 
-.ta-card-quote,
+.ta-card-quote { font-size: calc(1em - 3px) !important; }
 .ta-comment-input { font-size: calc(1em - 1px) !important; }
 
 .ta-card-actions { display: flex; justify-content: flex-end; align-items: center; margin-top: 4px; font-size: 11px; line-height: 1.2; opacity: 0.62; }

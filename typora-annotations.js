@@ -706,24 +706,52 @@
     }, FOCUS_DURATION);
   }
 
+  function centeredScrollTop(currentTop, viewportHeight, scrollHeight, viewportTop, targetRect) {
+    const targetHeight = Math.max(1, targetRect.bottom - targetRect.top);
+    const desired = currentTop + targetRect.top - viewportTop -
+      (viewportHeight - targetHeight) / 2;
+    return Math.max(0, Math.min(Math.max(0, scrollHeight - viewportHeight), desired));
+  }
+
+  function scrollEditorRectIntoView(rect) {
+    if (!rect) return false;
+    const content = document.querySelector("content");
+    if (!content || content.clientHeight <= 0 || content.scrollHeight <= content.clientHeight) {
+      return false;
+    }
+    const viewport = content.getBoundingClientRect();
+    const top = centeredScrollTop(
+      content.scrollTop,
+      content.clientHeight,
+      content.scrollHeight,
+      viewport.top,
+      rect,
+    );
+    if (typeof content.scrollTo === "function") {
+      content.scrollTo({ top, behavior: "smooth" });
+    } else {
+      content.scrollTop = top;
+    }
+    return true;
+  }
+
   function focusAnnotation(id) {
     const resolved = state.resolved.get(id);
     if (!resolved) return toast("这条批注暂时无法定位");
     activateAnnotation(id);
     if (resolved.kind === "code") {
       resolved.cm.scrollIntoView({ from: resolved.from, to: resolved.to }, 100);
+      const rect = codeSelectionRects(resolved)[0] ||
+        resolved.cm.getWrapperElement?.().getBoundingClientRect();
+      scrollEditorRectIntoView(rect);
       resolved.cm.focus();
       resolved.cm.setSelection(resolved.from, resolved.to);
       window.setTimeout(() => resolved.cm.setCursor(resolved.to), FOCUS_DURATION);
       return;
     }
     const range = resolved.range;
-    const target = range.startContainer.nodeType === Node.ELEMENT_NODE
-      ? range.startContainer
-      : range.startContainer.parentElement;
-    if (target && typeof target.scrollIntoView === "function") {
-      target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-    } else {
+    const rect = Array.from(range.getClientRects())[0] || range.getBoundingClientRect();
+    if (!scrollEditorRectIntoView(rect)) {
       const rect = range.getBoundingClientRect();
       window.scrollBy({ top: rect.top - window.innerHeight / 3, behavior: "smooth" });
     }
@@ -946,6 +974,7 @@
       commonSuffixLength,
       textPointForOffset,
       commentMarkerPosition,
+      centeredScrollTop,
     };
   }
 })();
