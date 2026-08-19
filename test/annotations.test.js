@@ -22,6 +22,7 @@ const {
   commentMarkerPosition,
   centeredScrollTop,
   orderedItemsForSidebar,
+  bindPrimaryActivation,
 } = sandbox.module.exports;
 
 assert.equal(commonPrefixLength("abcd", "abxy"), 2);
@@ -140,9 +141,57 @@ assert.deepEqual(
 assert.match(styles, /#typora-annotation-list\s*\{[^}]*\bgap:\s*8px;/s);
 assert.match(styles, /\.ta-card\s*\{[^}]*\bmargin:\s*0;/s);
 assert.match(source, /comment\.className = "ta-comment-input"/);
+
+const activationListeners = {};
+const activationTarget = {
+  addEventListener(type, listener) { activationListeners[type] = listener; },
+};
+let activationCalls = 0;
+bindPrimaryActivation(activationTarget, () => { activationCalls += 1; });
+const pointerEvent = {
+  button: 0,
+  defaultPrevented: false,
+  propagationStopped: false,
+  preventDefault() { this.defaultPrevented = true; },
+  stopPropagation() { this.propagationStopped = true; },
+};
+activationListeners.pointerdown(pointerEvent);
+assert.equal(activationCalls, 1);
+assert.equal(pointerEvent.defaultPrevented, true);
+assert.equal(pointerEvent.propagationStopped, true);
+activationListeners.click({ detail: 1, preventDefault() {}, stopPropagation() {} });
+assert.equal(activationCalls, 1, "a pointer click must not activate twice");
+activationListeners.click({ detail: 0, preventDefault() {}, stopPropagation() {} });
+assert.equal(activationCalls, 2, "keyboard activation must still work");
+activationListeners.pointerdown({
+  button: 2,
+  preventDefault() { throw new Error("right click must not be prevented"); },
+  stopPropagation() { throw new Error("right click must not be stopped"); },
+});
+assert.equal(activationCalls, 2, "right click must not activate");
+
+const filteredListeners = {};
+bindPrimaryActivation(
+  { addEventListener(type, listener) { filteredListeners[type] = listener; } },
+  () => { throw new Error("filtered targets must not activate"); },
+  () => false,
+);
+filteredListeners.pointerdown({
+  button: 0,
+  preventDefault() { throw new Error("filtered targets must keep their default behavior"); },
+  stopPropagation() { throw new Error("filtered targets must keep propagating"); },
+});
+
+assert.match(source, /bindPrimaryActivation\(marker,/);
+assert.match(source, /bindPrimaryActivation\(quote,/);
+assert.match(source, /bindPrimaryActivation\(remove,/);
+
 assert.equal((styles.match(/\.ta-card-comment\s*\{/g) || []).length, 1);
 assert.match(styles, /\.ta-comment-input\s*\{[^}]*\bresize:\s*vertical;/s);
 assert.match(styles, /\.ta-card-quote\s*\{[^}]*font-size:\s*calc\(1em - 3px\)/s);
+assert.match(styles, /\.ta-card\.selected\s*\{[^}]*border-color:\s*rgba\(219, 120, 0, 0\.42\)/s);
+assert.match(styles, /\.ta-card\.selected\s*\{[^}]*background:\s*color-mix\([^}]*#db7800 6%\)/s);
+assert.doesNotMatch(styles, /\.ta-card\.selected\s*\{[^}]*0 0 0 3px/s);
 assert.match(source, /const FOCUS_DURATION = 1800;/);
 assert.match(source, /document\.querySelector\("content"\)/);
 assert.match(source, /item\.id === state\.focusedId \? " selected" : ""/);
