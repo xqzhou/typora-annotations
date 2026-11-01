@@ -26,6 +26,7 @@ INDEX="$TYPEMARK/index.html"
 
 cp "$PROJECT_DIR/typora-annotations.js" "$TYPEMARK/typora-annotations.js"
 cp "$PROJECT_DIR/typora-annotations.css" "$TYPEMARK/typora-annotations.css"
+cp "$PROJECT_DIR/typora-annotations-svg.js" "$TYPEMARK/typora-annotations-svg.js"
 
 /usr/bin/python3 - "$INDEX" <<'PY'
 from pathlib import Path
@@ -39,7 +40,10 @@ if marker not in text:
     if "</body>" not in text:
         raise SystemExit("Could not find </body> injection point")
     text = text.replace("</body>", injection + "</body>", 1)
-    path.write_text(text)
+if "typora-annotations-svg.js" not in text:
+    text = text.replace('<script src="./typora-annotations.js"></script>',
+                        '<script src="./typora-annotations-svg.js"></script>\n\t<script src="./typora-annotations.js"></script>', 1)
+path.write_text(text)
 PY
 
 codesign --force --deep --sign - --options runtime --entitlements "$PROJECT_DIR/typora-annotations.entitlements.plist" "$STAGED_APP"

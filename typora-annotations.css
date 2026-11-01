@@ -12,6 +12,45 @@
   text-decoration: underline solid rgba(190, 82, 0, 0.95) 2px;
 }
 
+.ta-svg-host {
+  position: fixed;
+  z-index: 2147483639;
+  pointer-events: none;
+}
+.ta-svg-host.ta-svg-themed { background: var(--bg-color, #fff); }
+.ta-svg-host[hidden], .ta-svg-surface[hidden], .ta-svg-outline[hidden], .ta-svg-tools button[hidden] { display: none !important; }
+.ta-svg-surface { position: absolute; inset: 0; pointer-events: none; touch-action: none; }
+.ta-svg-tools {
+  position: absolute;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  pointer-events: auto;
+  border: 1px solid var(--ta-border);
+  border-radius: 7px;
+  background: var(--ta-bg);
+  box-shadow: 0 2px 8px #0002;
+  font-size: 12px;
+}
+#typora-annotations-root .ta-svg-tools button { padding: 4px 7px; border-radius: 4px; }
+.ta-svg-tools button:hover, .ta-svg-tools button[aria-pressed="true"] { background: #d9770626 !important; }
+.ta-svg-outline, .ta-svg-annotation {
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid #d97706;
+  border-radius: 3px;
+  background: #ffb12a18;
+}
+.ta-svg-outline { position: absolute; border-style: dashed; }
+.ta-svg-annotation { position: fixed; }
+.ta-svg-annotation-highlight { background: #ffdc414d; }
+.ta-svg-annotation.selected { border-color: #e66000; background: #ff8b004d; }
+.ta-svg-caption { font-size: 11px; opacity: .7; margin: 4px 0 6px; overflow-wrap: anywhere; }
+.ta-svg-thumbnail { position: relative; width: 100%; max-width: 260px; margin: 6px 0; overflow: hidden; border-radius: 4px; background: white; }
+.ta-svg-thumbnail img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ta-svg-thumbnail span { position: absolute; box-sizing: border-box; min-width: 3px; min-height: 3px; border: 2px solid #d97706; background: #ffb12a33; }
+
 #typora-annotations-root {
   --ta-bg: color-mix(in srgb, var(--bg-color, #fff) 94%, #888 6%);
   --ta-fg: var(--text-color, #252525);

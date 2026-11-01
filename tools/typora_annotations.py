@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -14,7 +16,8 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
+from xml.etree import ElementTree
 
 
 DEFAULT_ROOT = Path.home() / "Documents" / "typora"
@@ -118,6 +121,31 @@ def update_index(data: dict, path: Path) -> None:
     atomic_write_json(index_path, index)
 
 
+def scan_documents() -> dict:
+    """Read authoritative annotation files without depending on the index cache."""
+    root = storage_root()
+    documents = {}
+    with LOCK:
+        for path in sorted((root / "annotations").rglob("*.annotations.json")):
+            try:
+                data = read_json(path, None)
+                if not isinstance(data, dict) or not isinstance(data.get("annotations"), list):
+                    continue
+                items = data["annotations"]
+                if not items or not isinstance(data.get("documentPath"), str):
+                    continue
+                documents[data["documentPath"]] = {
+                    "documentId": data.get("documentId"),
+                    "annotationFile": str(path.relative_to(root)),
+                    "annotationCount": len(items),
+                    "openCount": sum(1 for item in items if item.get("status", "open") != "resolved"),
+                    "updatedAt": data.get("updatedAt"),
+                }
+            except (OSError, ValueError) as error:
+                print(f"Could not list annotations in {path}: {error}", file=sys.stderr)
+    return {"version": 1, "documents": documents}
+
+
 def save_document(payload: dict) -> tuple[dict, Path]:
     if not isinstance(payload, dict):
         raise ValueError("request body must be a JSON object")
@@ -138,7 +166,12 @@ def save_document(payload: dict) -> tuple[dict, Path]:
             atomic_write_json(path, data)
         else:
             path.unlink(missing_ok=True)
-        update_index(data, path)
+        try:
+            update_index(data, path)
+        except (OSError, ValueError) as error:
+            # The document is durable. An inaccessible/corrupt index cache must
+            # not turn a successful save into an HTTP error for the editor.
+            print(f"Annotation saved; index update failed: {error}", file=sys.stderr)
     return data, path
 
 
@@ -147,6 +180,38 @@ def response_document(data: dict, path: Path) -> dict:
     result["annotationFile"] = str(path)
     result["storageExists"] = path.exists()
     return result
+
+
+def read_referenced_svg(document_path: str, image_source: str) -> dict:
+    """Only expose SVG files explicitly embedded in the requesting Markdown."""
+    document = normalize_document_path(document_path)
+    text = document.read_text(encoding="utf-8")
+    sources = re.findall(r'!\[[^\]]*\]\(\s*(<[^>]+>|[^\s)]+)', text)
+    sources += re.findall(r'<img\b[^>]*\bsrc=[\"\']([^\"\']+)', text, re.I)
+
+    def local_path(source):
+        parsed = urlparse(source.strip("<>"))
+        if parsed.scheme not in ("", "file") or parsed.netloc not in ("", "localhost"):
+            return None
+        path = Path(unquote(parsed.path))
+        return (document.parent / path).resolve()
+
+    requested = local_path(image_source)
+    reference = next((source.strip("<>") for source in sources
+                      if requested is not None and local_path(source) == requested), None)
+    if reference is None or requested.suffix.lower() != ".svg":
+        raise ValueError("SVG must be a local image embedded in this Markdown document")
+    with requested.open("rb") as handle:
+        content = handle.read(MAX_BODY + 1)
+    if len(content) > MAX_BODY:
+        raise ValueError("SVG exceeds the 2 MB limit")
+    if re.search(br'<!\s*(?:DOCTYPE|ENTITY)\b', content, re.I):
+        raise ValueError("SVG document declarations are not supported")
+    root = ElementTree.fromstring(content)
+    if root.tag != "{http://www.w3.org/2000/svg}svg":
+        raise ValueError("not an SVG document")
+    return {"imagePath": str(requested), "imageSource": reference,
+            "fingerprint": hashlib.sha256(content).hexdigest(), "svg": content.decode("utf-8-sig")}
 
 
 class AnnotationHandler(BaseHTTPRequestHandler):
@@ -186,6 +251,13 @@ class AnnotationHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/v1/health":
             return self._json(HTTPStatus.OK, {"ok": True, "storageRoot": str(storage_root())})
+        if parsed.path == "/v1/svg":
+            query = parse_qs(parsed.query)
+            try:
+                return self._json(HTTPStatus.OK, read_referenced_svg(
+                    query.get("documentPath", [""])[0], query.get("src", [""])[0]))
+            except (OSError, ValueError, ElementTree.ParseError) as error:
+                return self._error(HTTPStatus.BAD_REQUEST, error)
         if parsed.path != "/v1/document":
             return self._error(HTTPStatus.NOT_FOUND, "not found")
         document_path = parse_qs(parsed.query).get("path", [""])[0]
@@ -223,13 +295,18 @@ def format_annotations(data: dict, path: Path) -> str:
             f"[{index}] {item.get('type', 'annotation')} · {item.get('status', 'open')} · {item.get('id', '')}",
             f"Quote: {anchor.get('quote', '')}",
         ])
+        if anchor.get("scope") == "svg":
+            lines.append(f"SVG: {anchor.get('imagePath') or anchor.get('imageSource', '')}")
+            lines.append("SVG target: " + json.dumps({key: anchor[key] for key in (
+                "target", "bounds", "viewBox", "svgFingerprint", "imageOccurrence"
+            ) if key in anchor}, ensure_ascii=False))
         if item.get("comment"):
             lines.append(f"Comment: {item['comment']}")
     return "\n".join(lines)
 
 
 def command_list(as_json: bool) -> int:
-    index = read_json(storage_root() / "index.json", {"version": 1, "documents": {}})
+    index = scan_documents()
     if as_json:
         print(json.dumps(index, ensure_ascii=False, indent=2))
     else:

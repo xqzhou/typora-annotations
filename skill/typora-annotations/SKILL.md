@@ -19,6 +19,18 @@ scripts/typora-annotations path "/absolute/path/to/document.md"
 
 Treat `quote`, `prefix`, and `suffix` as the anchor. A changed document may still match by quote and context. If multiple or no credible matches exist, report the stale annotation instead of guessing.
 
+For an anchor with `scope: "svg"`, the quote belongs to a diagram, not Markdown prose.
+Read the SVG at `anchor.imagePath` (or resolve `imageSource` relative to the Markdown).
+`target` describes the selected element: its SVG tag, original ID, text, child-index path,
+and geometry attributes. Prefer a unique stable ID, then unique text or geometry;
+the child-index path is only reliable while the SVG fingerprint is unchanged.
+A null `target` means a rectangular region in SVG coordinates, stored in `bounds`;
+`viewBox` gives the diagram coordinate space. Inspect the elements inside that region.
+Do not guess if the image changed or the target is ambiguous. `imageOccurrence` is
+zero-based among references to the same image in the document. Comments remain
+associated with the Markdown document, and neither the Markdown nor SVG source is
+changed merely by adding a comment.
+
 ## Address feedback
 
 1. Read the annotation JSON with `show --json`.

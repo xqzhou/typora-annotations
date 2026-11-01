@@ -9,6 +9,7 @@ PLIST="$LAUNCH_AGENTS_DIR/io.local.typora-annotations.helper.plist"
 SKILL_SOURCE="$PROJECT_DIR/skill/typora-annotations"
 AGENT_SKILL="$HOME/.agents/skills/typora-annotations"
 CODEX_SKILL="$HOME/.codex/skills/typora-annotations"
+ANTIGRAVITY_SKILL="$HOME/.gemini/config/skills/typora-annotations"
 
 mkdir -p "$SUPPORT_DIR" "$LAUNCH_AGENTS_DIR" "$HOME/Documents/typora" "$HOME/.agents/skills" "$HOME/.codex/skills"
 cp "$PROJECT_DIR/tools/typora_annotations.py" "$SUPPORT_DIR/typora_annotations.py"
@@ -25,10 +26,18 @@ if [[ -e "$CODEX_SKILL" || -L "$CODEX_SKILL" ]]; then
 fi
 ln -s "$AGENT_SKILL" "$CODEX_SKILL"
 
+mkdir -p "$(dirname "$ANTIGRAVITY_SKILL")"
+if [[ ! -e "$ANTIGRAVITY_SKILL" && ! -L "$ANTIGRAVITY_SKILL" ]]; then
+  ln -s "$AGENT_SKILL" "$ANTIGRAVITY_SKILL"
+elif [[ "$(readlink "$ANTIGRAVITY_SKILL" || true)" != "$AGENT_SKILL" ]]; then
+  echo "Preserved existing Antigravity skill: $ANTIGRAVITY_SKILL"
+fi
+
 launchctl bootout "gui/$(id -u)/io.local.typora-annotations.helper" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 launchctl kickstart -k "gui/$(id -u)/io.local.typora-annotations.helper"
 
 echo "Installed helper: $SUPPORT_DIR/typora_annotations.py"
 echo "Installed global skill: $AGENT_SKILL"
+echo "Antigravity skill: $ANTIGRAVITY_SKILL"
 echo "Annotation storage: $HOME/Documents/typora"

@@ -13,6 +13,7 @@
   const FOCUS_DURATION = 1800;
   const HELPER_URL = "http://127.0.0.1:17373/v1/document";
   const SIDEBAR_WIDTH_KEY = "typora-annotations:sidebar-width";
+  let svgManager = null;
 
   const state = {
     documentId: null,
@@ -365,6 +366,7 @@
   function renderNow() {
     const map = buildTextMap();
     if (!map.root) return;
+    svgManager?.sync();
     clearNativeHighlights();
     document.querySelector("#typora-annotation-markers")?.replaceChildren();
     document.querySelector("#typora-annotation-fallback")?.replaceChildren();
@@ -378,6 +380,14 @@
     const codeValues = codeMirrors.map((cm) => cm.getValue());
 
     for (const item of state.items) {
+      if (item.anchor.scope === "svg") {
+        const resolved = svgManager?.resolve(item.anchor);
+        if (!resolved) continue;
+        state.resolved.set(item.id, resolved);
+        svgManager.draw(resolved, item.type, item.id === state.focusedId);
+        if (item.type === "comment") addCommentMarker(item, resolved);
+        continue;
+      }
       if (item.anchor.scope === "code") {
         const match = findCodeAnchor(codeValues, item.anchor);
         if (!match) continue;
@@ -487,7 +497,7 @@
   }
 
   function addCommentMarker(item, resolved) {
-    const rects = resolved.kind === "code"
+    const rects = resolved.kind === "svg" ? [svgManager.rect(resolved)].filter(Boolean) : resolved.kind === "code"
       ? codeSelectionRects(resolved)
       : Array.from(resolved.range.getClientRects());
     const position = commentMarkerPosition(rects, window.scrollX, window.scrollY);
@@ -572,9 +582,12 @@
   function showSelectionToolbar(target) {
     const captured = captureSelection(target);
     if (!captured) return hideSelectionToolbar();
-    state.pendingAnchor = captured.anchor;
+    showAnchorToolbar(captured.anchor, captured.rect);
+  }
+
+  function showAnchorToolbar(anchor, rect) {
+    state.pendingAnchor = anchor;
     const toolbar = document.querySelector("#typora-annotation-toolbar");
-    const rect = captured.rect;
     if (!toolbar || (!rect.width && !rect.height)) return;
     toolbar.hidden = false;
     toolbar.style.left = Math.max(8, Math.min(window.innerWidth - toolbar.offsetWidth - 8, rect.left + rect.width / 2 - toolbar.offsetWidth / 2)) + "px";
@@ -758,6 +771,11 @@
     const resolved = state.resolved.get(id);
     if (!resolved) return toast("这条批注暂时无法定位");
     activateAnnotation(id);
+    if (resolved.kind === "svg") {
+      const rect = svgManager.rect(resolved);
+      if (!scrollEditorRectIntoView(rect)) resolved.entry.image.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     if (resolved.kind === "code") {
       resolved.cm.scrollIntoView({ from: resolved.from, to: resolved.to }, 100);
       const rect = codeSelectionRects(resolved)[0] ||
@@ -784,6 +802,7 @@
     if (!resolved) return null;
     if (resolved.kind === "dom") return resolved.range.startContainer;
     if (resolved.kind === "code") return resolved.cm.getWrapperElement?.() || null;
+    if (resolved.kind === "svg") return resolved.entry.image;
     return null;
   }
 
@@ -865,6 +884,17 @@
       bindPrimaryActivation(quote, () => focusAnnotation(item.id));
       card.appendChild(quote);
 
+      if (item.anchor.scope === "svg") {
+        const caption = document.createElement("div");
+        caption.className = "ta-svg-caption";
+        caption.textContent = "SVG · " + (item.anchor.imageAlt || item.anchor.imageSource) +
+          (item.anchor.target ? " · 图中元素" : " · 框选区域");
+        card.appendChild(caption);
+        const resolved = state.resolved.get(item.id);
+        const thumbnail = resolved && svgManager?.thumbnail(resolved);
+        if (thumbnail) card.appendChild(thumbnail);
+      }
+
       if (item.type === "comment") {
         const comment = document.createElement("textarea");
         comment.className = "ta-comment-input";
@@ -882,7 +912,7 @@
       bindPrimaryActivation(remove, () => deleteAnnotation(item.id));
       if (!isResolved) {
         const status = document.createElement("span");
-        status.textContent = "原文已变化";
+        status.textContent = item.anchor.scope === "svg" ? "图中对象已变化或暂时无法读取" : "原文已变化";
         actions.appendChild(status);
       }
       actions.appendChild(remove);
@@ -958,6 +988,7 @@
     const nextId = currentDocumentId();
     if (nextId === state.documentId) return;
     state.documentId = nextId;
+    svgManager?.reset();
     state.items = readLocalItems();
     closeComposer();
     hideSelectionToolbar();
@@ -999,6 +1030,12 @@
 
   function init() {
     buildUi();
+    if (window.TyporaSvgAnnotations) {
+      svgManager = window.TyporaSvgAnnotations.create({
+        root: document.getElementById(ROOT_ID), documentPath: currentDocumentPath,
+        onSelect: showAnchorToolbar, onChange: render, onStop: hideSelectionToolbar, toast,
+      });
+    }
     state.documentId = currentDocumentId();
     state.items = readLocalItems();
     initSidebarResize();
@@ -1010,6 +1047,7 @@
     setInterval(() => {
       switchDocumentIfNeeded();
       syncTypography();
+      svgManager?.sync();
       if (!state.observer || !document.querySelector("#write")) observeEditor();
     }, 750);
     window.__typoraAnnotations = {
@@ -1018,7 +1056,7 @@
       findAnchor,
       get annotationFile() { return state.annotationFile; },
       get storageMode() { return state.storageMode; },
-      version: "2.1.1",
+      version: "2.3.0",
     };
   }
 
